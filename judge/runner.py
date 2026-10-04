@@ -1,4 +1,53 @@
 import subprocess
+import time
+
+
+def run_one(command, input_data, timeout):
+    start_time = time.time()
+
+    try:
+        result = subprocess.run(
+            command,
+            input=input_data,
+            capture_output=True,
+            text=True,
+            timeout=timeout
+        )
+
+        end_time = time.time()
+
+        return {
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "return_code": result.returncode,
+            "time": (end_time - start_time) * 1000,
+            "timed_out": False
+        }
+
+    except subprocess.TimeoutExpired:
+        end_time = time.time()
+
+        return {
+            "stdout": "",
+            "stderr": "",
+            "return_code": None,
+            "time": (end_time - start_time) * 1000,
+            "timed_out": True
+        }
+
+
+def normalize_output(text):
+    lines = [line.rstrip() for line in text.splitlines()]
+
+    while lines and lines[-1] == "":
+        lines.pop()
+
+    return "\n".join(lines)
+
+
+# -------------------------
+# Read input and expected output
+# -------------------------
 
 input_file = "problems/hello/1.in"
 expected_file = "problems/hello/1.out"
@@ -9,14 +58,24 @@ with open(input_file, "r") as f:
 with open(expected_file, "r") as f:
     expected_output = f.read()
 
-result = subprocess.run(
+
+# -------------------------
+# Run submitted program
+# -------------------------
+
+result = run_one(
     ["python", "submissions/hello.py"],
-    input=input_data,
-    capture_output=True,
-    text=True
+    input_data,
+    2
 )
 
-actual_output = result.stdout
+
+# -------------------------
+# Get results
+# -------------------------
+
+actual_output = result["stdout"]
+
 
 print("Input:")
 print(input_data)
@@ -27,18 +86,22 @@ print(expected_output)
 print("Actual:")
 print(actual_output)
 
-print("Return code:")
-print(result.returncode)
+print("Return code:", result["return_code"])
+print("Execution time:", round(result["time"], 2), "ms")
 
-def normalize_output(text):
-    lines = [line.rstrip() for line in text.splitlines()]
 
-    while lines and lines[-1] == "":
-        lines.pop()
+# -------------------------
+# Determine verdict
+# -------------------------
 
-    return "\n".join(lines)
+if result["timed_out"]:
+    print("Verdict: TLE")
 
-if normalize_output(actual_output) == normalize_output(expected_output):
+elif result["return_code"] != 0:
+    print("Verdict: RE")
+
+elif normalize_output(actual_output) == normalize_output(expected_output):
     print("Verdict: AC")
+
 else:
     print("Verdict: WA")
