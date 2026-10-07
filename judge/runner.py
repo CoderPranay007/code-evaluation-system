@@ -45,9 +45,7 @@ def normalize_output(text):
     return "\n".join(lines)
 
 
-# -------------------------
 # Read input and expected output
-# -------------------------
 
 input_file = "problems/hello/1.in"
 expected_file = "problems/hello/1.out"
@@ -58,10 +56,7 @@ with open(input_file, "r") as f:
 with open(expected_file, "r") as f:
     expected_output = f.read()
 
-
-# -------------------------
 # Run submitted program
-# -------------------------
 
 result = run_one(
     ["python", "submissions/hello.py"],
@@ -70,9 +65,8 @@ result = run_one(
 )
 
 
-# -------------------------
+
 # Get results
-# -------------------------
 
 actual_output = result["stdout"]
 
