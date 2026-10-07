@@ -1,0 +1,7 @@
+AC = "AC"
+WA = "WA"
+CE = "CE"
+RE = "RE"
+TLE = "TLE"
+MLE = "MLE"
+IE = "IE"
