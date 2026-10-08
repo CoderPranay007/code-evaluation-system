@@ -38,3 +38,32 @@ assert result.timed_out is False
 assert result.execution_time_ms > 0
 
 print("Docker Python test: PASS")
+print()
+
+print("Testing Python TLE...")
+
+tle_source_code = """
+while True:
+    pass
+"""
+
+tle_result = run_python_in_docker(
+    source_code=tle_source_code,
+    input_data="",
+    timeout_seconds=2
+)
+
+print("TLE RETURN CODE:")
+print(tle_result.return_code)
+
+print("TLE TIMED OUT:")
+print(tle_result.timed_out)
+
+print("TLE EXECUTION TIME:")
+print(tle_result.execution_time_ms)
+
+assert tle_result.timed_out is True
+assert tle_result.return_code is None
+assert tle_result.execution_time_ms >= 2000
+
+print("Docker Python TLE test: PASS")

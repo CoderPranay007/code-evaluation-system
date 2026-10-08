@@ -1,8 +1,7 @@
 import os
-import subprocess
 import tempfile
-import time
 
+from judge.sandbox.docker_runner import run_docker_container
 from judge.executor import ExecutionResult
 
 
@@ -28,54 +27,13 @@ def run_python_in_docker(
         ) as file:
             file.write(source_code)
 
-        command = [
-            "docker",
-            "run",
-            "--rm",
-            "-i",
-            "-v",
-            f"{temp_dir}:/workspace",
-            "python:3.13",
-            "python",
-            "/workspace/main.py"
-        ]
-
-        start_time = time.perf_counter()
-
-        try:
-
-            result = subprocess.run(
-                command,
-                input=input_data,
-                capture_output=True,
-                text=True,
-                timeout=timeout_seconds
-            )
-
-            end_time = time.perf_counter()
-
-            return ExecutionResult(
-                stdout=result.stdout,
-                stderr=result.stderr,
-                return_code=result.returncode,
-                execution_time_ms=(
-                    end_time - start_time
-                ) * 1000,
-                timed_out=False,
-                memory_used_kb=None
-            )
-
-        except subprocess.TimeoutExpired as exc:
-
-            end_time = time.perf_counter()
-
-            return ExecutionResult(
-                stdout=exc.stdout or "",
-                stderr=exc.stderr or "",
-                return_code=None,
-                execution_time_ms=(
-                    end_time - start_time
-                ) * 1000,
-                timed_out=True,
-                memory_used_kb=None
-            )
+        return run_docker_container(
+            image="python:3.13",
+            container_command=[
+                "python",
+                "/workspace/main.py"
+            ],
+            input_data=input_data,
+            timeout_seconds=timeout_seconds,
+            volume_mount=f"{temp_dir}:/workspace"
+        )
