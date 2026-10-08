@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import os
 import tempfile
 
-from judge.executor import run_process
+from judge.executor import run_process, ExecutionResult
 from judge.comparator import compare_output
 from judge.verdict import AC, WA, CE, RE, TLE
 from judge.compiler.python import get_command
@@ -129,10 +129,10 @@ def evaluate(
             timeout_seconds=timeout_seconds
         )
 
-        actual_output = result["stdout"]
+        actual_output = result.stdout
 
 
-        if result["timed_out"]:
+        if result.timed_out:
 
             return JudgeResult(
                 verdict=TLE,
@@ -143,14 +143,14 @@ def evaluate(
             )
 
 
-        if result["return_code"] != 0:
+        if result.return_code != 0:
 
             return JudgeResult(
                 verdict=RE,
-                execution_time=result["execution_time_ms"],
+                execution_time=result.execution_time_ms,
                 memory_used=None,
                 actual_output=actual_output,
-                error_message=result["stderr"]
+                error_message=result.stderr
             )
 
 

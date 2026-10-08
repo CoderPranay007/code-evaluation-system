@@ -1,16 +1,18 @@
+from dataclasses import dataclass
 import subprocess
 import time
 
 
+@dataclass
+class ExecutionResult:
+    stdout: str
+    stderr: str
+    return_code: int | None
+    execution_time_ms: float
+    timed_out: bool
+
+
 def _decode_output(output):
-    """
-    Convert subprocess output into a string.
-
-    Normally subprocess.run() gives us a string because
-    text=True is used. TimeoutExpired can sometimes contain
-    bytes, so we handle both cases.
-    """
-
     if output is None:
         return ""
 
@@ -20,17 +22,11 @@ def _decode_output(output):
     return output
 
 
-def run_process(command, input_data: str, timeout_seconds: float) -> dict:
-    """
-    Execute a process.
-
-    Returns:
-        stdout
-        stderr
-        return_code
-        execution_time_ms
-        timed_out
-    """
+def run_process(
+    command: list[str],
+    input_data: str,
+    timeout_seconds: float
+) -> ExecutionResult:
 
     start_time = time.perf_counter()
 
@@ -45,21 +41,22 @@ def run_process(command, input_data: str, timeout_seconds: float) -> dict:
 
         end_time = time.perf_counter()
 
-        return {
-            "stdout": result.stdout,
-            "stderr": result.stderr,
-            "return_code": result.returncode,
-            "execution_time_ms": (end_time - start_time) * 1000,
-            "timed_out": False
-        }
+        return ExecutionResult(
+            stdout=result.stdout,
+            stderr=result.stderr,
+            return_code=result.returncode,
+            execution_time_ms=(end_time - start_time) * 1000,
+            timed_out=False
+        )
 
     except subprocess.TimeoutExpired as exc:
+
         end_time = time.perf_counter()
 
-        return {
-            "stdout": _decode_output(exc.stdout),
-            "stderr": _decode_output(exc.stderr),
-            "return_code": None,
-            "execution_time_ms": (end_time - start_time) * 1000,
-            "timed_out": True
-        }
+        return ExecutionResult(
+            stdout=_decode_output(exc.stdout),
+            stderr=_decode_output(exc.stderr),
+            return_code=None,
+            execution_time_ms=(end_time - start_time) * 1000,
+            timed_out=True
+        )
