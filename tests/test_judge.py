@@ -1,62 +1,71 @@
 from judge.judge import evaluate
-from judge.verdict import AC, WA, RE, TLE
+from judge.verdict import AC, WA, RE, TLE, CE
 
+def test_python_accepted():
 
-def test_accepted():
     source_code = """
-print("Hello World")
+n = int(input())
+print(n * 2)
 """
 
     result = evaluate(
         source_code=source_code,
         language="python",
-        input_data="",
-        expected_output="Hello World\n",
+        input_data="5\n",
+        expected_output="10\n",
         time_limit=1000,
         memory_limit=64
     )
 
     assert result.verdict == AC
-    print("AC test: PASS")
+
+    print("Python AC test: PASS")
 
 
-def test_wrong_answer():
+def test_python_wrong_answer():
+
     source_code = """
-print("Wrong Answer")
+n = int(input())
+print(n * 3)
 """
 
     result = evaluate(
         source_code=source_code,
         language="python",
-        input_data="",
-        expected_output="Correct Answer\n",
+        input_data="5\n",
+        expected_output="10\n",
         time_limit=1000,
         memory_limit=64
     )
 
     assert result.verdict == WA
-    print("WA test: PASS")
+
+    print("Python WA test: PASS")
 
 
-def test_runtime_error():
+def test_python_runtime_error():
+
     source_code = """
-print(10 / 0)
+n = int(input())
+print(n / 0)
 """
 
     result = evaluate(
         source_code=source_code,
         language="python",
-        input_data="",
-        expected_output="",
+        input_data="5\n",
+        expected_output="10\n",
         time_limit=1000,
         memory_limit=64
     )
 
     assert result.verdict == RE
-    print("RE test: PASS")
+
+    print("Python RE test: PASS")
 
 
-def test_time_limit():
+def test_python_time_limit():
+
     source_code = """
 while True:
     pass
@@ -72,14 +81,146 @@ while True:
     )
 
     assert result.verdict == TLE
-    print("TLE test: PASS")
 
+    print("Python TLE test: PASS")
+
+
+
+def test_cpp_accepted():
+
+    source_code = r"""
+#include <iostream>
+
+using namespace std;
+
+int main() {
+
+    int n;
+    cin >> n;
+
+    cout << n * 2 << endl;
+
+    return 0;
+}
+"""
+
+    result = evaluate(
+        source_code=source_code,
+        language="cpp",
+        input_data="5\n",
+        expected_output="10\n",
+        time_limit=1000,
+        memory_limit=64
+    )
+
+    assert result.verdict == AC
+
+    print("C++ AC test: PASS")
+
+
+def test_cpp_wrong_answer():
+
+    source_code = r"""
+#include <iostream>
+
+using namespace std;
+
+int main() {
+
+    int n;
+    cin >> n;
+
+    cout << n * 3 << endl;
+
+    return 0;
+}
+"""
+
+    result = evaluate(
+        source_code=source_code,
+        language="cpp",
+        input_data="5\n",
+        expected_output="10\n",
+        time_limit=1000,
+        memory_limit=64
+    )
+
+    assert result.verdict == WA
+
+    print("C++ WA test: PASS")
+
+
+def test_cpp_runtime_error():
+
+    source_code = r"""
+#include <iostream>
+
+using namespace std;
+
+int main() {
+
+    return 1;
+}
+"""
+
+    result = evaluate(
+        source_code=source_code,
+        language="cpp",
+        input_data="",
+        expected_output="",
+        time_limit=1000,
+        memory_limit=64
+    )
+
+    assert result.verdict == RE
+
+    print("C++ RE test: PASS")
+
+
+def test_cpp_compilation_error():
+
+    source_code = r"""
+#include <iostream>
+
+using namespace std;
+
+int main() {
+
+    cout << "Hello World" << endl
+
+    return 0;
+}
+"""
+
+    result = evaluate(
+        source_code=source_code,
+        language="cpp",
+        input_data="",
+        expected_output="Hello World\n",
+        time_limit=1000,
+        memory_limit=64
+    )
+
+    assert result.verdict == CE
+
+    print("C++ CE test: PASS")
+
+
+# ============================================================
+# MAIN
+# ============================================================
 
 if __name__ == "__main__":
-    test_accepted()
-    test_wrong_answer()
-    test_runtime_error()
-    test_time_limit()
+
+    test_python_accepted()
+    test_python_wrong_answer()
+    test_python_runtime_error()
+    test_python_time_limit()
+
+    test_cpp_accepted()
+    test_cpp_wrong_answer()
+    test_cpp_runtime_error()
+    test_cpp_compilation_error()
 
     print()
-    print("All Step 1 tests passed.")
+    print("All Step 2 tests passed.")

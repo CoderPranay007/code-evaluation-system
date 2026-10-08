@@ -1,16 +1,19 @@
 from dataclasses import dataclass
 import os
-import sys
 import tempfile
 
 from judge.executor import run_process
 from judge.comparator import compare_output
-from judge.verdict import AC, WA, RE, TLE
+from judge.verdict import AC, WA, CE, RE, TLE
+from judge.compiler.python import get_command
+from judge.compiler.cpp import compile_cpp
 
 
 @dataclass
 class JudgeResult:
-    """ Result returned by the Judge."""
+    """
+    Result returned by the Judge.
+    """
 
     verdict: str
 
@@ -28,68 +31,109 @@ def evaluate(
     time_limit: int,
     memory_limit: int
 ) -> JudgeResult:
-    """
-    Evaluate one submitted program against one test case.
-
-    Parameters:
-        source_code:
-            Complete submitted source code.
-
-        language:
-            Currently supported:
-                python
-
-    """
+ 
 
     language = language.lower().strip()
 
-    # ---------------------------------------------------------
-    # Currently only Python is supported.
-    # ---------------------------------------------------------
+    if language == "py":
+        language = "python"
 
-    if language not in {"python", "py"}:
-        return JudgeResult(
-            verdict=RE,
-            error_message=f"Unsupported language: {language}"
-        )
+    if language in {"c++", "cc", "cxx"}:
+        language = "cpp"
 
-    # ---------------------------------------------------------
-    # Convert milliseconds to seconds because subprocess.run()
-    # expects timeout in seconds.
-    # ---------------------------------------------------------
 
-    timeout_seconds = time_limit / 1000
+    with tempfile.TemporaryDirectory(
+        prefix="judge_"
+    ) as temp_dir:
 
-    temp_file_path = None
+        source_file = None
+        executable_file = None
 
-    try:
-        # -----------------------------------------------------
-        # Create a temporary Python source file.
-        # -----------------------------------------------------
+        if language == "python":
 
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            suffix=".py",
-            delete=False,
-            encoding="utf-8"
-        ) as temp_file:
+            source_file = os.path.join(
+                temp_dir,
+                "submission.py"
+            )
 
-            temp_file.write(source_code)
-            temp_file_path = temp_file.name
+            with open(
+                source_file,
+                "w",
+                encoding="utf-8"
+            ) as file:
 
-        # -----------------------------------------------------
-        # Execute the submitted Python program.
-        # -----------------------------------------------------
+                file.write(source_code)
+
+            command = get_command(source_file)
+
+        elif language == "cpp":
+
+            source_file = os.path.join(
+                temp_dir,
+                "submission.cpp"
+            )
+
+            executable_file = os.path.join(
+                temp_dir,
+                "submission.exe"
+            )
+
+            with open(
+                source_file,
+                "w",
+                encoding="utf-8"
+            ) as file:
+
+                file.write(source_code)
+
+
+            compilation = compile_cpp(
+                source_file=source_file,
+                executable_file=executable_file
+            )
+           
+            # Compilation Error
+
+            if compilation["timed_out"]:
+
+                return JudgeResult(
+                    verdict=CE,
+                    error_message="Compilation timed out"
+                )
+
+            if not compilation["success"]:
+
+                return JudgeResult(
+                    verdict=CE,
+                    error_message=compilation["stderr"]
+                )
+
+
+            command = [executable_file]
+
+        # UNSUPPORTED LANGUAGE
+        else:
+
+            return JudgeResult(
+                verdict=RE,
+                error_message=f"Unsupported language: {language}"
+            )
+
+        # EXECUTION
+
+        timeout_seconds = time_limit / 1000
 
         result = run_process(
-            [sys.executable, temp_file_path],
-            input_data,
-            timeout_seconds
+            command=command,
+            input_data=input_data,
+            timeout_seconds=timeout_seconds
         )
 
         actual_output = result["stdout"]
 
+
         if result["timed_out"]:
+
             return JudgeResult(
                 verdict=TLE,
                 execution_time=result["execution_time_ms"],
@@ -100,6 +144,7 @@ def evaluate(
 
 
         if result["return_code"] != 0:
+
             return JudgeResult(
                 verdict=RE,
                 execution_time=result["execution_time_ms"],
@@ -113,39 +158,19 @@ def evaluate(
             actual_output,
             expected_output
         ):
-            verdict = AC
-        else:
-            verdict = WA
+
+            return JudgeResult(
+                verdict=AC,
+                execution_time=result["execution_time_ms"],
+                memory_used=None,
+                actual_output=actual_output,
+                error_message=None
+            )
 
         return JudgeResult(
-            verdict=verdict,
+            verdict=WA,
             execution_time=result["execution_time_ms"],
             memory_used=None,
             actual_output=actual_output,
             error_message=None
         )
-
-    except Exception as exc:
-        # -----------------------------------------------------
-        # Internal judge error.
-        #
-        # We don't have IE in the current return structure yet,
-        # so represent unexpected judge failure as RE for now.
-        # We will improve this later.
-        # -----------------------------------------------------
-
-        return JudgeResult(
-            verdict=RE,
-            error_message=f"Judge error: {exc}"
-        )
-
-    finally:
-        # -----------------------------------------------------
-        # Always remove the temporary source file.
-        # -----------------------------------------------------
-
-        if temp_file_path is not None:
-            try:
-                os.remove(temp_file_path)
-            except OSError:
-                pass
