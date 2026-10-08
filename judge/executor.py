@@ -13,7 +13,7 @@ class ExecutionResult:
     timed_out: bool
     memory_used_kb: int | None = None
     memory_limit_exceeded: bool = False
-
+    compilation_failed: bool = False
 
 def _decode_output(output):
     if output is None:

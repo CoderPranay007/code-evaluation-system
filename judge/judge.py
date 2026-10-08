@@ -1,13 +1,10 @@
 from dataclasses import dataclass
-import os
-import tempfile
 
-from judge.executor import run_process, is_execution_successful
+from judge.executor import is_execution_successful
 from judge.comparator import compare_output
-from judge.verdict import AC, WA, CE, RE, TLE
-from judge.compiler.python import get_command
-from judge.compiler.cpp import compile_cpp
+from judge.verdict import AC, WA, CE, RE, TLE, MLE
 from judge.sandbox.docker_python import run_python_in_docker
+from judge.sandbox.docker_cpp import run_cpp_in_docker
 
 
 @dataclass
@@ -38,125 +35,94 @@ def evaluate(
     if language in {"c++", "cc", "cxx"}:
         language = "cpp"
 
-    with tempfile.TemporaryDirectory(
-        prefix="judge_"
-    ) as temp_dir:
+    # EXECUTION
+    
+    if language == "python":
 
-        source_file = None
-        executable_file = None
+        result = run_python_in_docker(
+            source_code=source_code,
+            input_data=input_data,
+            timeout_seconds=time_limit / 1000,
+            memory_limit_mb=memory_limit
+        )
 
+    elif language == "cpp":
 
-        if language == "python":
-     
-         result = run_python_in_docker(
-             source_code=source_code,
-             input_data=input_data,
-             timeout_seconds=time_limit / 1000,
-             memory_limit_mb=memory_limit
-         )
+        result = run_cpp_in_docker(
+            source_code=source_code,
+            input_data=input_data,
+            timeout_seconds=time_limit / 1000,
+            memory_limit_mb=memory_limit
+        )
 
-
-        elif language == "cpp":
-
-            source_file = os.path.join(
-                temp_dir,
-                "submission.cpp"
-            )
-
-            executable_file = os.path.join(
-                temp_dir,
-                "submission.exe"
-            )
-
-            with open(
-                source_file,
-                "w",
-                encoding="utf-8"
-            ) as file:
-
-                file.write(source_code)
-
-            compilation = compile_cpp(
-                source_file=source_file,
-                executable_file=executable_file
-            )
-
-            if compilation.timed_out:
-
-                return JudgeResult(
-                    verdict=CE,
-                    error_message="Compilation timed out"
-                )
-
-            if not compilation.success:
-
-                return JudgeResult(
-                    verdict=CE,
-                    error_message=compilation.stderr
-                )
-
-            command = [executable_file]
-
-        else:
-
-            return JudgeResult(
-                verdict=RE,
-                error_message=f"Unsupported language: {language}"
-            )
-
-        # EXECUTION
-
-        if language == "cpp":
-        
-            timeout_seconds = time_limit / 1000
-        
-            result = run_process(
-                command=command,
-                input_data=input_data,
-                timeout_seconds=timeout_seconds
-            )
-
-        actual_output = result.stdout
-
-        if result.timed_out:
-
-            return JudgeResult(
-                verdict=TLE,
-                execution_time=result.execution_time_ms,
-                memory_used=result.memory_used_kb,
-                actual_output=actual_output,
-                error_message="Time limit exceeded"
-            )
-
-
-        if not is_execution_successful(result):
-
-            return JudgeResult(
-                verdict=RE,
-                execution_time=result.execution_time_ms,
-                memory_used=result.memory_used_kb,
-                actual_output=actual_output,
-                error_message=result.stderr
-            )
-
-        if compare_output(
-            actual_output,
-            expected_output
-        ):
-
-            return JudgeResult(
-                verdict=AC,
-                execution_time=result.execution_time_ms,
-                memory_used=result.memory_used_kb,
-                actual_output=actual_output,
-                error_message=None
-            )
-
+    else:
 
         return JudgeResult(
-            verdict=WA,
+            verdict=RE,
+            error_message=f"Unsupported language: {language}"
+        )
+
+    actual_output = result.stdout
+
+    if result.compilation_failed:
+
+        return JudgeResult(
+            verdict=CE,
+            execution_time=result.execution_time_ms,
+            memory_used=result.memory_used_kb,
+            actual_output=actual_output,
+            error_message=result.stderr
+        )
+    
+    if result.timed_out:
+
+        return JudgeResult(
+            verdict=TLE,
+            execution_time=result.execution_time_ms,
+            memory_used=result.memory_used_kb,
+            actual_output=actual_output,
+            error_message="Time limit exceeded"
+        )
+    
+    if result.memory_limit_exceeded:
+
+        return JudgeResult(
+            verdict=MLE,
+            execution_time=result.execution_time_ms,
+            memory_used=result.memory_used_kb,
+            actual_output=actual_output,
+            error_message="Memory limit exceeded"
+        )
+    
+    if not is_execution_successful(result):
+
+        return JudgeResult(
+            verdict=RE,
+            execution_time=result.execution_time_ms,
+            memory_used=result.memory_used_kb,
+            actual_output=actual_output,
+            error_message=result.stderr
+        )
+
+
+    if compare_output(
+        actual_output,
+        expected_output
+    ):
+
+        return JudgeResult(
+            verdict=AC,
             execution_time=result.execution_time_ms,
             memory_used=result.memory_used_kb,
             actual_output=actual_output,
             error_message=None
         )
+
+
+    return JudgeResult(
+        verdict=WA,
+        execution_time=result.execution_time_ms,
+        memory_used=result.memory_used_kb,
+        actual_output=actual_output,
+        error_message=None
+    )

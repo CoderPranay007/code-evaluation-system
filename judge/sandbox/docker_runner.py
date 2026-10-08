@@ -27,6 +27,8 @@ def run_docker_container(
     if memory_limit_mb is not None:
         command += [
             "--memory",
+            f"{memory_limit_mb}m",
+            "--memory-swap",
             f"{memory_limit_mb}m"
         ]
 
@@ -97,7 +99,10 @@ def run_docker_container(
             ) * 1000,
             timed_out=False,
             memory_used_kb=None,
-            memory_limit_exceeded=oom_killed
+            memory_limit_exceeded=(
+                oom_killed
+                or process.returncode == 137
+            )
         )
 
     except subprocess.TimeoutExpired:

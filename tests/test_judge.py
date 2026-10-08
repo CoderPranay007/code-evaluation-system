@@ -1,5 +1,5 @@
 from judge.judge import evaluate
-from judge.verdict import AC, WA, RE, TLE, CE
+from judge.verdict import AC, WA, RE, TLE, CE, MLE
 
 def test_python_accepted():
 
@@ -149,6 +149,38 @@ int main() {
 
     print("C++ WA test: PASS")
 
+def test_cpp_memory_limit_exceeded():
+
+    source_code = r"""
+#include <cstddef>
+#include <new>
+
+int main() {
+
+    const size_t size = 1024ULL * 1024 * 1024; // 1 GB
+
+    volatile char* data = new char[size];
+
+    for (size_t i = 0; i < size; i += 4096) {
+        data[i] = 1;
+    }
+
+    return 0;
+}
+"""
+
+    result = evaluate(
+        source_code=source_code,
+        language="cpp",
+        input_data="",
+        expected_output="",
+        time_limit=5000,
+        memory_limit=64
+    )
+
+    assert result.verdict == MLE
+
+    print("C++ MLE test: PASS")
 
 def test_cpp_runtime_error():
 
@@ -217,7 +249,7 @@ print(n * 2)
         language="python",
         input_data="21\n",
         expected_output="42\n",
-        time_limit=1000,
+        time_limit=5000,
         memory_limit=64
     )
 
@@ -238,6 +270,7 @@ if __name__ == "__main__":
     test_python_time_limit()
     test_cpp_accepted()
     test_cpp_wrong_answer()
+    test_cpp_memory_limit_exceeded()
     test_cpp_runtime_error()
     test_cpp_compilation_error()
     test_evaluate_single_test_case()

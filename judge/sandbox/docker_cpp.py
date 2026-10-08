@@ -28,20 +28,46 @@ def run_cpp_in_docker(
         ) as file:
             file.write(source_code)
 
-        return run_docker_container(
+
+        # Step 1: Compile
+
+        compile_result = run_docker_container(
             image="gcc:latest",
             container_command=[
-                "bash",
-                "-c",
-                (
-                    "g++ /workspace/main.cpp "
-                    "-std=c++17 -O2 "
-                    "-o /workspace/main && "
-                    "/workspace/main"
-                )
+                "g++",
+                "/workspace/main.cpp",
+                "-std=c++17",
+                "-O2",
+                "-o",
+                "/workspace/main"
+            ],
+            input_data="",
+            timeout_seconds=30,
+            memory_limit_mb=None,
+            volume_mount=f"{temp_dir}:/workspace"
+        )
+
+        if compile_result.timed_out:
+
+            compile_result.compilation_failed = True
+            return compile_result
+
+        if compile_result.return_code != 0:
+
+            compile_result.compilation_failed = True
+            return compile_result
+
+        # Step 2: Execute
+    
+        execution_result = run_docker_container(
+            image="gcc:latest",
+            container_command=[
+                "/workspace/main"
             ],
             input_data=input_data,
             timeout_seconds=timeout_seconds,
             memory_limit_mb=memory_limit_mb,
             volume_mount=f"{temp_dir}:/workspace"
         )
+
+        return execution_result
