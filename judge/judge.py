@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import os
 import tempfile
 
-from judge.executor import run_process, ExecutionResult
+from judge.executor import run_process, is_execution_successful
 from judge.comparator import compare_output
 from judge.verdict import AC, WA, CE, RE, TLE
 from judge.compiler.python import get_command
@@ -11,9 +11,6 @@ from judge.compiler.cpp import compile_cpp
 
 @dataclass
 class JudgeResult:
-    """
-    Result returned by the Judge.
-    """
 
     verdict: str
 
@@ -31,7 +28,6 @@ def evaluate(
     time_limit: int,
     memory_limit: int
 ) -> JudgeResult:
- 
 
     language = language.lower().strip()
 
@@ -41,13 +37,13 @@ def evaluate(
     if language in {"c++", "cc", "cxx"}:
         language = "cpp"
 
-
     with tempfile.TemporaryDirectory(
         prefix="judge_"
     ) as temp_dir:
 
         source_file = None
         executable_file = None
+
 
         if language == "python":
 
@@ -65,6 +61,7 @@ def evaluate(
                 file.write(source_code)
 
             command = get_command(source_file)
+
 
         elif language == "cpp":
 
@@ -86,13 +83,10 @@ def evaluate(
 
                 file.write(source_code)
 
-
             compilation = compile_cpp(
                 source_file=source_file,
                 executable_file=executable_file
             )
-           
-            # Compilation Error
 
             if compilation["timed_out"]:
 
@@ -108,10 +102,8 @@ def evaluate(
                     error_message=compilation["stderr"]
                 )
 
-
             command = [executable_file]
 
-        # UNSUPPORTED LANGUAGE
         else:
 
             return JudgeResult(
@@ -131,19 +123,18 @@ def evaluate(
 
         actual_output = result.stdout
 
-
         if result.timed_out:
 
             return JudgeResult(
                 verdict=TLE,
-                execution_time=result["execution_time_ms"],
+                execution_time=result.execution_time_ms,
                 memory_used=None,
                 actual_output=actual_output,
                 error_message="Time limit exceeded"
             )
 
 
-        if result.return_code != 0:
+        if not is_execution_successful(result):
 
             return JudgeResult(
                 verdict=RE,
@@ -153,7 +144,6 @@ def evaluate(
                 error_message=result.stderr
             )
 
-
         if compare_output(
             actual_output,
             expected_output
@@ -161,15 +151,16 @@ def evaluate(
 
             return JudgeResult(
                 verdict=AC,
-                execution_time=result["execution_time_ms"],
+                execution_time=result.execution_time_ms,
                 memory_used=None,
                 actual_output=actual_output,
                 error_message=None
             )
 
+
         return JudgeResult(
             verdict=WA,
-            execution_time=result["execution_time_ms"],
+            execution_time=result.execution_time_ms,
             memory_used=None,
             actual_output=actual_output,
             error_message=None

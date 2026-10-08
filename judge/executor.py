@@ -60,3 +60,9 @@ def run_process(
             execution_time_ms=(end_time - start_time) * 1000,
             timed_out=True
         )
+
+def is_execution_successful(result: ExecutionResult) -> bool:
+    return (
+        not result.timed_out
+        and result.return_code == 0
+    )
