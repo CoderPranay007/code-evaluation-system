@@ -88,18 +88,18 @@ def evaluate(
                 executable_file=executable_file
             )
 
-            if compilation["timed_out"]:
+            if compilation.timed_out:
 
                 return JudgeResult(
                     verdict=CE,
                     error_message="Compilation timed out"
                 )
 
-            if not compilation["success"]:
+            if not compilation.success:
 
                 return JudgeResult(
                     verdict=CE,
-                    error_message=compilation["stderr"]
+                    error_message=compilation.stderr
                 )
 
             command = [executable_file]
