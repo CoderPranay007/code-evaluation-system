@@ -206,21 +206,38 @@ int main() {
     print("C++ CE test: PASS")
 
 
-# ============================================================
-# MAIN
-# ============================================================
+def test_evaluate_single_test_case():
+    source_code = """
+n = int(input())
+print(n * 2)
+"""
+
+    result = evaluate(
+        source_code=source_code,
+        language="python",
+        input_data="21\n",
+        expected_output="42\n",
+        time_limit=1000,
+        memory_limit=64
+    )
+
+    assert result.verdict == AC
+    assert result.actual_output == "42\n"
+    assert result.execution_time is not None
+
+    print("Single test-case evaluation: PASS")
+
 
 if __name__ == "__main__":
-
     test_python_accepted()
     test_python_wrong_answer()
     test_python_runtime_error()
     test_python_time_limit()
-
     test_cpp_accepted()
     test_cpp_wrong_answer()
     test_cpp_runtime_error()
     test_cpp_compilation_error()
+    test_evaluate_single_test_case()
 
     print()
-    print("All Step 2 tests passed.")
+    print("All Step 4 tests passed.")
