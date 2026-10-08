@@ -224,6 +224,9 @@ print(n * 2)
     assert result.verdict == AC
     assert result.actual_output == "42\n"
     assert result.execution_time is not None
+    assert result.memory_used is not None
+
+    print(f"Memory used: {result.memory_used} KB")
 
     print("Single test-case evaluation: PASS")
 
@@ -240,4 +243,4 @@ if __name__ == "__main__":
     test_evaluate_single_test_case()
 
     print()
-    print("All Step 4 tests passed.")
+    print("All Step 5 tests passed.")

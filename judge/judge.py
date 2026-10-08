@@ -128,7 +128,7 @@ def evaluate(
             return JudgeResult(
                 verdict=TLE,
                 execution_time=result.execution_time_ms,
-                memory_used=None,
+                memory_used=result.memory_used_kb,
                 actual_output=actual_output,
                 error_message="Time limit exceeded"
             )
@@ -139,7 +139,7 @@ def evaluate(
             return JudgeResult(
                 verdict=RE,
                 execution_time=result.execution_time_ms,
-                memory_used=None,
+                memory_used=result.memory_used_kb,
                 actual_output=actual_output,
                 error_message=result.stderr
             )
@@ -152,7 +152,7 @@ def evaluate(
             return JudgeResult(
                 verdict=AC,
                 execution_time=result.execution_time_ms,
-                memory_used=None,
+                memory_used=result.memory_used_kb,
                 actual_output=actual_output,
                 error_message=None
             )
@@ -161,7 +161,7 @@ def evaluate(
         return JudgeResult(
             verdict=WA,
             execution_time=result.execution_time_ms,
-            memory_used=None,
+            memory_used=result.memory_used_kb,
             actual_output=actual_output,
             error_message=None
         )

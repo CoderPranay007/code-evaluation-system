@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import os
 import subprocess
 import time
 
@@ -10,6 +11,7 @@ class ExecutionResult:
     return_code: int | None
     execution_time_ms: float
     timed_out: bool
+    memory_used_kb: int | None = None
 
 
 def _decode_output(output):
@@ -21,6 +23,58 @@ def _decode_output(output):
 
     return output
 
+def get_memory_usage_kb(pid: int) -> int | None:
+
+    if os.name == "nt":
+        try:
+            import ctypes
+
+            class PROCESS_MEMORY_COUNTERS(ctypes.Structure):
+                _fields_ = [
+                    ("cb", ctypes.c_ulong),
+                    ("PageFaultCount", ctypes.c_ulong),
+                    ("PeakWorkingSetSize", ctypes.c_size_t),
+                    ("WorkingSetSize", ctypes.c_size_t),
+                    ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                    ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                    ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                    ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                    ("PagefileUsage", ctypes.c_size_t),
+                    ("PeakPagefileUsage", ctypes.c_size_t),
+                ]
+
+            PROCESS_QUERY_INFORMATION = 0x0400
+            PROCESS_VM_READ = 0x0010
+
+            handle = ctypes.windll.kernel32.OpenProcess(
+                PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+                False,
+                pid
+            )
+
+            if not handle:
+                return None
+
+            counters = PROCESS_MEMORY_COUNTERS()
+            counters.cb = ctypes.sizeof(counters)
+
+            success = ctypes.windll.psapi.GetProcessMemoryInfo(
+                handle,
+                ctypes.byref(counters),
+                ctypes.sizeof(counters)
+            )
+
+            ctypes.windll.kernel32.CloseHandle(handle)
+
+            if not success:
+                return None
+
+            return counters.WorkingSetSize // 1024
+
+        except Exception:
+            return None
+
+    return None
 
 def run_process(
     command: list[str],
@@ -30,35 +84,66 @@ def run_process(
 
     start_time = time.perf_counter()
 
+    process = None
+
     try:
-        result = subprocess.run(
+        process = subprocess.Popen(
             command,
-            input=input_data,
-            capture_output=True,
-            text=True,
-            timeout=timeout_seconds
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
         )
+
+        try:
+            stdout, stderr = process.communicate(
+                input=input_data,
+                timeout=timeout_seconds
+            )
+
+            end_time = time.perf_counter()
+
+            memory_used_kb = get_memory_usage_kb(process.pid)
+
+            return ExecutionResult(
+                stdout=stdout,
+                stderr=stderr,
+                return_code=process.returncode,
+                execution_time_ms=(end_time - start_time) * 1000,
+                timed_out=False,
+                memory_used_kb=memory_used_kb
+            )
+
+        except subprocess.TimeoutExpired:
+
+            process.kill()
+
+            stdout, stderr = process.communicate()
+
+            end_time = time.perf_counter()
+
+            memory_used_kb = get_memory_usage_kb(process.pid)
+
+            return ExecutionResult(
+                stdout=stdout,
+                stderr=stderr,
+                return_code=None,
+                execution_time_ms=(end_time - start_time) * 1000,
+                timed_out=True,
+                memory_used_kb=memory_used_kb
+            )
+
+    except Exception as exc:
 
         end_time = time.perf_counter()
 
         return ExecutionResult(
-            stdout=result.stdout,
-            stderr=result.stderr,
-            return_code=result.returncode,
-            execution_time_ms=(end_time - start_time) * 1000,
-            timed_out=False
-        )
-
-    except subprocess.TimeoutExpired as exc:
-
-        end_time = time.perf_counter()
-
-        return ExecutionResult(
-            stdout=_decode_output(exc.stdout),
-            stderr=_decode_output(exc.stderr),
+            stdout="",
+            stderr=str(exc),
             return_code=None,
             execution_time_ms=(end_time - start_time) * 1000,
-            timed_out=True
+            timed_out=False,
+            memory_used_kb=None
         )
 
 def is_execution_successful(result: ExecutionResult) -> bool:
