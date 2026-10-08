@@ -7,6 +7,7 @@ from judge.comparator import compare_output
 from judge.verdict import AC, WA, CE, RE, TLE
 from judge.compiler.python import get_command
 from judge.compiler.cpp import compile_cpp
+from judge.sandbox.docker_python import run_python_in_docker
 
 
 @dataclass
@@ -46,21 +47,13 @@ def evaluate(
 
 
         if language == "python":
-
-            source_file = os.path.join(
-                temp_dir,
-                "submission.py"
-            )
-
-            with open(
-                source_file,
-                "w",
-                encoding="utf-8"
-            ) as file:
-
-                file.write(source_code)
-
-            command = get_command(source_file)
+     
+         result = run_python_in_docker(
+             source_code=source_code,
+             input_data=input_data,
+             timeout_seconds=time_limit / 1000,
+             memory_limit_mb=memory_limit
+         )
 
 
         elif language == "cpp":
@@ -113,13 +106,15 @@ def evaluate(
 
         # EXECUTION
 
-        timeout_seconds = time_limit / 1000
-
-        result = run_process(
-            command=command,
-            input_data=input_data,
-            timeout_seconds=timeout_seconds
-        )
+        if language == "cpp":
+        
+            timeout_seconds = time_limit / 1000
+        
+            result = run_process(
+                command=command,
+                input_data=input_data,
+                timeout_seconds=timeout_seconds
+            )
 
         actual_output = result.stdout
 
