@@ -10,6 +10,7 @@ def run_docker_container(
     container_command: list[str],
     input_data: str,
     timeout_seconds: float,
+    memory_limit_mb: int | None = None,
     volume_mount: str | None = None
 ) -> ExecutionResult:
 
@@ -20,9 +21,14 @@ def run_docker_container(
         "run",
         "--name",
         container_name,
-        "--rm",
         "-i",
     ]
+
+    if memory_limit_mb is not None:
+        command += [
+            "--memory",
+            f"{memory_limit_mb}m"
+        ]
 
     if volume_mount is not None:
         command.extend([
@@ -52,6 +58,34 @@ def run_docker_container(
             timeout=timeout_seconds
         )
 
+        oom_killed = False
+
+        inspect_result = subprocess.run(
+            [
+                "docker",
+                "inspect",
+                "--format",
+                "{{.State.OOMKilled}}",
+                container_name
+            ],
+            capture_output=True,
+            text=True
+        )
+        
+        if inspect_result.returncode == 0:
+            oom_killed = inspect_result.stdout.strip().lower() == "true"
+        
+        subprocess.run(
+            [
+                "docker",
+                "rm",
+                "-f",
+                container_name
+            ],
+            capture_output=True,
+            text=True
+        )
+
         end_time = time.perf_counter()
 
         return ExecutionResult(
@@ -62,7 +96,8 @@ def run_docker_container(
                 end_time - start_time
             ) * 1000,
             timed_out=False,
-            memory_used_kb=None
+            memory_used_kb=None,
+            memory_limit_exceeded=oom_killed
         )
 
     except subprocess.TimeoutExpired:
@@ -111,5 +146,6 @@ def run_docker_container(
                 end_time - start_time
             ) * 1000,
             timed_out=True,
-            memory_used_kb=None
+            memory_used_kb=None,
+            memory_limit_exceeded=False
         )

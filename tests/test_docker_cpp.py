@@ -80,3 +80,51 @@ assert tle_result.return_code is None
 assert tle_result.execution_time_ms >= 2000
 
 print("Docker C++ TLE test: PASS")
+print()
+
+print("Testing C++ memory limit...")
+
+memory_source_code = r"""
+#include <vector>
+#include <iostream>
+
+int main() {
+    const size_t size = 512ULL * 1024 * 1024;
+
+    volatile char* data = new char[size];
+
+    for (size_t i = 0; i < size; i += 4096) {
+        data[i] = 1;
+    }
+
+    std::cout << "allocated" << std::endl;
+
+    delete[] data;
+
+    return 0;
+}
+"""
+
+memory_result = run_cpp_in_docker(
+    source_code=memory_source_code,
+    input_data="",
+    timeout_seconds=10,
+    memory_limit_mb=256
+)
+
+print("MLE RETURN CODE:")
+print(memory_result.return_code)
+
+print("MLE TIMED OUT:")
+print(memory_result.timed_out)
+
+print("MLE STDERR:")
+print(memory_result.stderr)
+
+print("MLE EXECUTION TIME:")
+print(memory_result.execution_time_ms)
+
+assert memory_result.memory_limit_exceeded is True
+assert memory_result.timed_out is False
+
+print("Docker C++ MLE test: PASS")

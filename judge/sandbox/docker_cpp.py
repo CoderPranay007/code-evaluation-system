@@ -8,7 +8,8 @@ from judge.executor import ExecutionResult
 def run_cpp_in_docker(
     source_code: str,
     input_data: str,
-    timeout_seconds: float
+    timeout_seconds: float,
+    memory_limit_mb: int | None = None
 ) -> ExecutionResult:
 
     with tempfile.TemporaryDirectory(
@@ -41,5 +42,6 @@ def run_cpp_in_docker(
             ],
             input_data=input_data,
             timeout_seconds=timeout_seconds,
+            memory_limit_mb=memory_limit_mb,
             volume_mount=f"{temp_dir}:/workspace"
         )
